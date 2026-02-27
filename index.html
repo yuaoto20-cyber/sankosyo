@@ -189,11 +189,14 @@
 </head>
 <body>
 
-    <div class="header">
+<div class="header">
         <h1>参考書フロー</h1>
         <div id="tabs-container"></div>
         <button class="tab-btn add-subject-btn" onclick="addNewSubject()">＋ 科目追加</button>
-    </div>
+        
+        <button class="tab-btn" style="background:#e67e22; margin-left:auto;" onclick="saveToCloud()">☁️ クラウドへ保存</button>
+        <button class="tab-btn" style="background:#2980b9;" onclick="loadFromCloud()">☁️ クラウドから読込</button>
+        </div>
 
     <div class="main-content" id="main-content"></div>
     
@@ -508,21 +511,13 @@
         loadData();
         renderAll();
     </script>
-    
-    <div style="padding: 20px; background: #fff; margin-top: 20px; border-top: 2px solid #ccc; text-align: center;">
-        <h3>同期テスト</h3>
-        <input type="text" id="myInput" placeholder="ここに文字を入力" style="padding: 8px;">
-        <button class="btn" onclick="handleSave()" style="width: auto;">Firebaseへ保存</button>
-        <button class="btn" onclick="handleLoad()" style="width: auto;">Firebaseから読み込み</button>
-        <p>読み込んだ結果：<span id="result" style="font-weight: bold; color: #d9534f;">---</span></p>
-    </div>
 
     <script type="module">
       // Firebase SDKの読み込み
       import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
       import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
-      // ★注意：ここの設定値はご自身のFirebaseコンソールのものに書き換えてくださいね！★
+      // Firebaseの設定（キーはそのままです）
       const firebaseConfig = {
         apiKey: "AIzaSyCmDDvm4-JcrahZMemFeJzS9SsgKH09oHQ",
         authDomain: "sankousyo-d5219.firebaseapp.com",
@@ -532,61 +527,52 @@
         appId: "1:277582152665:web:c58508acb559273da4cfc8"
       };
 
-      // Firebaseの初期化
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
 
-      // --- データの保存関数 ---
-      async function saveData(data) {
-        await setDoc(doc(db, "app_data", "user_1"), {
-          content: data,
-          timestamp: new Date()
-        });
-        console.log("保存完了！");
-      }
-
-      // --- データの読み込み関数 ---
-      async function loadData() {
-        const docRef = doc(db, "app_data", "user_1");
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          console.log("読み込んだデータ:", docSnap.data().content);
-          return docSnap.data().content;
-        } else {
-          console.log("データがありません");
-          return null;
-        }
-      }
-
-      // --- 保存ボタンを押した時の動き ---
-      window.handleSave = async () => {
-        const text = document.getElementById('myInput').value; 
+      // --- ★本番用：クラウドへ保存する動き ---
+      window.saveToCloud = async () => {
         try {
-            await saveData(text); 
-            alert("保存に成功しました！");
+            // appData（参考書のデータ全体）を文字（JSON）に変換してFirebaseに送る
+            const dataString = JSON.stringify(appData);
+            await setDoc(doc(db, "app_data", "my_flowchart"), {
+                content: dataString,
+                timestamp: new Date()
+            });
+            alert("クラウドに最新のフローチャートを保存しました！");
         } catch (e) {
             console.error("エラー:", e);
-            alert("保存に失敗しました。コンソールを確認してください。");
+            alert("保存に失敗しました。");
         }
       };
 
-      // --- 読み込みボタンを押した時の動き ---
-      window.handleLoad = async () => {
+      // --- ★本番用：クラウドから読み込む動き ---
+      window.loadFromCloud = async () => {
         try {
-            const data = await loadData(); 
-            document.getElementById('result').innerText = data || "データが空です";
+            const docRef = doc(db, "app_data", "my_flowchart");
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                // Firebaseから文字を受け取り、元のアプリデータ（配列）に戻す
+                const dataString = docSnap.data().content;
+                appData = JSON.parse(dataString); 
+                
+                // 読み込んだ後、画面の表示を更新する
+                if (appData.length > 0) {
+                    currentSubjectId = appData[0].id;
+                }
+                renderAll(); 
+                saveData(); // ブラウザ内（LocalStorage）にも保存しておく
+                
+                alert("クラウドからフローチャートを読み込みました！");
+            } else {
+                alert("クラウドにデータがありません。");
+            }
         } catch (e) {
             console.error("エラー:", e);
             alert("読み込みに失敗しました。");
         }
       };
-
-      // グローバルに公開
-      window.saveData = saveData;
-      window.loadData = loadData;
     </script>
 </body>
 </html>
-
-
