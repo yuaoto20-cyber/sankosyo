@@ -504,81 +504,87 @@
             renderMainContent();
         }
 
-        // アプリ起動
+// アプリ起動
         loadData();
         renderAll();
     </script>
-<input type="text" id="myInput" placeholder="ここに文字を入力">
-<button onclick="handleSave()">Firebaseへ保存</button>
-<button onclick="handleLoad()">Firebaseから読み込み</button>
+    
+    <div style="padding: 20px; background: #fff; margin-top: 20px; border-top: 2px solid #ccc; text-align: center;">
+        <h3>同期テスト</h3>
+        <input type="text" id="myInput" placeholder="ここに文字を入力" style="padding: 8px;">
+        <button class="btn" onclick="handleSave()" style="width: auto;">Firebaseへ保存</button>
+        <button class="btn" onclick="handleLoad()" style="width: auto;">Firebaseから読み込み</button>
+        <p>読み込んだ結果：<span id="result" style="font-weight: bold; color: #d9534f;">---</span></p>
+    </div>
 
-<p>読み込んだ結果：<span id="result">---</span></p>
-<script type="module">
-  // Firebase SDKの読み込み
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-  import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+    <script type="module">
+      // Firebase SDKの読み込み
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+      import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
-  // 1でメモした自分の設定に書き換えてください
-  const firebaseConfig = {
-    apiKey: "AIza...",
-    authDomain: "...",
-    projectId: "...",
-    storageBucket: "...",
-    messagingSenderId: "...",
-    appId: "..."
-  };
+      // ★注意：ここの設定値はご自身のFirebaseコンソールのものに書き換えてくださいね！★
+      const firebaseConfig = {
+        apiKey: "AIza...",
+        authDomain: "...",
+        projectId: "...",
+        storageBucket: "...",
+        messagingSenderId: "...",
+        appId: "..."
+      };
 
-  // Firebaseの初期化
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+      // Firebaseの初期化
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
 
-  // --- データの保存関数 ---
-  async function saveData(data) {
-    // 'users'というフォルダの中の'my-data'というファイルに保存するイメージ
-    await setDoc(doc(db, "app_data", "user_1"), {
-      content: data,
-      timestamp: new Date()
-    });
-    console.log("保存完了！");
-  }
+      // --- データの保存関数 ---
+      async function saveData(data) {
+        await setDoc(doc(db, "app_data", "user_1"), {
+          content: data,
+          timestamp: new Date()
+        });
+        console.log("保存完了！");
+      }
 
-  // --- データの読み込み関数 ---
-  async function loadData() {
-    const docRef = doc(db, "app_data", "user_1");
-    const docSnap = await getDoc(docRef);
+      // --- データの読み込み関数 ---
+      async function loadData() {
+        const docRef = doc(db, "app_data", "user_1");
+        const docSnap = await getDoc(docRef);
 
-    if (docSnap.exists()) {
-      console.log("読み込んだデータ:", docSnap.data().content);
-      return docSnap.data().content;
-    } else {
-      console.log("データがありません");
-    }
-  }
-// --- 1. 保存ボタンを押した時の動き ---
-window.handleSave = async () => {
-    const text = document.getElementById('myInput').value; // 入力欄の文字を取得
-    try {
-        await saveData(text); // 前に作った保存関数を呼び出す
-        alert("保存に成功しました！");
-    } catch (e) {
-        console.error("エラー:", e);
-        alert("保存に失敗しました。コンソールを確認してください。");
-    }
-};
+        if (docSnap.exists()) {
+          console.log("読み込んだデータ:", docSnap.data().content);
+          return docSnap.data().content;
+        } else {
+          console.log("データがありません");
+          return null;
+        }
+      }
 
-// --- 2. 読み込みボタンを押した時の動き ---
-window.handleLoad = async () => {
-    try {
-        const data = await loadData(); // 前に作った読み込み関数を呼び出す
-        document.getElementById('result').innerText = data || "データが空です";
-    } catch (e) {
-        console.error("エラー:", e);
-        alert("読み込みに失敗しました。");
-    }
-};
-  // グローバルに公開（ボタン等から呼び出せるようにする）
-  window.saveData = saveData;
-  window.loadData = loadData;
-</script>
+      // --- 保存ボタンを押した時の動き ---
+      window.handleSave = async () => {
+        const text = document.getElementById('myInput').value; 
+        try {
+            await saveData(text); 
+            alert("保存に成功しました！");
+        } catch (e) {
+            console.error("エラー:", e);
+            alert("保存に失敗しました。コンソールを確認してください。");
+        }
+      };
+
+      // --- 読み込みボタンを押した時の動き ---
+      window.handleLoad = async () => {
+        try {
+            const data = await loadData(); 
+            document.getElementById('result').innerText = data || "データが空です";
+        } catch (e) {
+            console.error("エラー:", e);
+            alert("読み込みに失敗しました。");
+        }
+      };
+
+      // グローバルに公開
+      window.saveData = saveData;
+      window.loadData = loadData;
+    </script>
 </body>
 </html>
