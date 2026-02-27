@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>参考書フローチャート（保存機能付き）</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        
+        /* ヘッダーとタブ */
+        .header {
+            background-color: #2c3e50;
+            padding: 15px 20px;
+            color: white;
+            display: flex;
+            align-items: center;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        .header h1 { margin: 0 20px 0 0; font-size: 1.2rem; }
+        
+        .tab-btn {
+            background: #34495e;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            margin-right: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .tab-btn:hover { background: #4b6584; }
+        .tab-btn.active { background: #3498db; font-weight: bold; }
+        .add-subject-btn { background: #27ae60; margin-left: 10px; }
+        .add-subject-btn:hover { background: #2ecc71; }
+
+        /* メインコンテンツ領域 */
+        .main-content {
+            padding: 20px;
+            min-height: 80vh;
+        }
+        .subject-title-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #ccc;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .subject-title-area h2 { margin: 0; }
+
+        /* ★ここが変更点：中央配置とスクロールの両立★ */
+        .roots-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            text-align: center; /* 少ない時は中央寄せ */
+        }
+        .roots-container {
+            display: inline-flex; /* 中身のサイズに合わせて広がる */
+            gap: 50px;
+            padding-bottom: 50px;
+            align-items: flex-start;
+            margin: 0 auto; /* 中央に配置 */
+            text-align: center;
+        }
+        
+        .root-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .root-name {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #e67e22;
+            margin-bottom: 10px;
+            padding: 5px 15px;
+            background: #fdf2e9;
+            border-radius: 20px;
+        }
+
+        /* ツリー構造のレイアウト */
+        .tree ul {
+            display: flex;
+            padding-top: 20px; 
+            position: relative;
+            margin: 0;
+            padding-left: 0;
+            justify-content: center;
+        }
+        .tree li {
+            list-style-type: none;
+            position: relative;
+            padding: 20px 10px 0 10px;
+            text-align: center;
+        }
+        /* ノード間を繋ぐ線 */
+        .tree li::before, .tree li::after{
+            content: '';
+            position: absolute; top: 0; right: 50%;
+            border-top: 2px solid #888;
+            width: 50%; height: 20px;
+        }
+        .tree li::after{ right: auto; left: 50%; border-left: 2px solid #888; }
+        .tree li:only-child::after, .tree li:only-child::before { display: none; }
+        .tree li:only-child{ padding-top: 0;}
+        .tree li:first-child::before, .tree li:last-child::after{ border: 0 none; }
+        .tree li:first-child::after{ border-radius: 5px 0 0 0; }
+        .tree li:last-child::before{ border-right: 2px solid #888; border-radius: 0 5px 0 0; }
+        .tree ul ul::before{
+            content: ''; position: absolute; top: 0; left: 50%;
+            border-left: 2px solid #888; width: 0; height: 20px;
+        }
+
+        /* ノード（参考書）のデザイン */
+        .node-content {
+            display: inline-block;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            background: #fff;
+            position: relative;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .book-cover {
+            width: 90px;
+            height: 126px;
+            object-fit: cover;
+            cursor: pointer;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+        .book-cover:hover { opacity: 0.8; }
+
+        /* 「済」マーク */
+        .completed-mark {
+            position: absolute; top: 45%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: #d9534f; font-size: 2rem; font-weight: bold;
+            border: 3px solid #d9534f; border-radius: 50%;
+            width: 60px; height: 60px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255, 255, 255, 0.7);
+            pointer-events: none; opacity: 0; transition: opacity 0.2s;
+        }
+        .node-content.is-completed .completed-mark { opacity: 1; }
+        .node-content.is-completed .book-cover { filter: grayscale(50%); }
+
+        /* メニュー・ボタン類 */
+        .action-menu {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px; border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            display: none; z-index: 10;
+            border: 1px solid #ccc;
+        }
+        .btn {
+            background: #007BFF; color: white; border: none;
+            padding: 6px 12px; border-radius: 4px; cursor: pointer;
+            font-size: 12px; margin: 3px; width: 100%; box-sizing: border-box;
+        }
+        .btn:hover { background: #0056b3; }
+        .btn-add { background: #28a745; margin-top: 8px; }
+        .btn-add:hover { background: #218838; }
+        .btn-danger { background: #dc3545; }
+        .btn-danger:hover { background: #c82333; }
+        .btn-close { background: #6c757d; }
+        
+        .add-options { display: none; gap: 5px; margin-top: 5px; justify-content: center; }
+        .btn-option { background: #6c757d; font-size: 11px; padding: 5px; flex: 1;}
+        
+        .empty-state {
+            text-align: center; padding: 50px; color: #7f8c8d;
+        }
+        .init-btn { font-size: 1.1rem; padding: 12px 25px; background: #3498db; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>参考書フロー</h1>
+        <div id="tabs-container"></div>
+        <button class="tab-btn add-subject-btn" onclick="addNewSubject()">＋ 科目追加</button>
+    </div>
+
+    <div class="main-content" id="main-content"></div>
+    
+    <input type="file" id="fileInput" accept="image/*" style="display:none">
+
+    <script>
+        // --- データの初期化と保存 ---
+        const DEFAULT_DATA = [
+            { id: generateId(), name: '英語', roots: [] },
+            { id: generateId(), name: '国語', roots: [] },
+            { id: generateId(), name: '数学', roots: [] },
+            { id: generateId(), name: '日本史', roots: [] },
+            { id: generateId(), name: '地理', roots: [] }
+        ];
+
+        let appData = [];
+        let currentSubjectId = null;
+        let currentAction = null; 
+
+        // LocalStorageからデータを読み込む
+        function loadData() {
+            const saved = localStorage.getItem('studyFlowchartData');
+            if (saved) {
+                appData = JSON.parse(saved);
+            } else {
+                appData = DEFAULT_DATA;
+            }
+            if (appData.length > 0) currentSubjectId = appData[0].id;
+        }
+
+        // LocalStorageにデータを保存する
+        function saveData() {
+            try {
+                localStorage.setItem('studyFlowchartData', JSON.stringify(appData));
+            } catch (e) {
+                alert("ブラウザの保存容量がいっぱいです。不要な参考書を削除してください。");
+            }
+        }
+
+        // ID生成
+        function generateId() { return Math.random().toString(36).substr(2, 9); }
+
+        // --- 画像処理（容量節約のための圧縮） ---
+        function compressImage(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 200; 
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > MAX_WIDTH) {
+                            height = Math.round((height * MAX_WIDTH) / width);
+                            width = MAX_WIDTH;
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        resolve(canvas.toDataURL('image/jpeg', 0.7));
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // --- コア機能（追加・削除など） ---
+        
+        function addNewSubject() {
+            const name = prompt("追加する科目の名前を入力してください（例：理科、世界史）");
+            if (name && name.trim() !== "") {
+                const newSubject = { id: generateId(), name: name.trim(), roots: [] };
+                appData.push(newSubject);
+                currentSubjectId = newSubject.id;
+                saveData();
+                renderAll();
+            }
+        }
+
+        function deleteCurrentSubject() {
+            if (confirm("現在表示している科目のタブとデータを全て削除しますか？")) {
+                appData = appData.filter(s => s.id !== currentSubjectId);
+                if (appData.length > 0) currentSubjectId = appData[0].id;
+                else currentSubjectId = null;
+                saveData();
+                renderAll();
+            }
+        }
+
+        function switchSubject(id) {
+            currentSubjectId = id;
+            renderAll();
+        }
+
+        // ファイル入力のトリガー
+        function triggerFileInput(actionType, parentId = null, isMultiple = false) {
+            currentAction = { type: actionType, parentId: parentId };
+            
+            if (actionType === 'INIT_ROOT') {
+                const rootName = prompt("開始地点の名前を入力してください（例：現代文、英単語、ルートAなど）");
+                if (!rootName) return; 
+                currentAction.tempRootName = rootName;
+            } else if (actionType === 'ADD_BRANCH') {
+                alert('分岐先の参考書画像を「複数枚」選択してください。');
+            }
+            
+            const fileInput = document.getElementById('fileInput');
+            fileInput.multiple = isMultiple;
+            fileInput.click();
+        }
+
+        // 画像選択時の処理
+        document.getElementById('fileInput').addEventListener('change', async function(e) {
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+
+            const compressedImages = await Promise.all(files.map(f => compressImage(f)));
+            const subject = appData.find(s => s.id === currentSubjectId);
+
+            if (currentAction.type === 'INIT_ROOT') {
+                subject.roots.push({
+                    id: generateId(),
+                    rootName: currentAction.tempRootName,
+                    imgSrc: compressedImages[0],
+                    completed: false,
+                    children: []
+                });
+            } else {
+                const parent = findNodeInSubject(subject, currentAction.parentId);
+                if (parent) {
+                    compressedImages.forEach(img => {
+                        parent.children.push({
+                            id: generateId(),
+                            imgSrc: img,
+                            completed: false,
+                            children: []
+                        });
+                    });
+                }
+            }
+            
+            e.target.value = ''; 
+            saveData();
+            renderAll();
+        });
+
+        function findNodeInSubject(subject, nodeId) {
+            for (let root of subject.roots) {
+                if (root.id === nodeId) return root;
+                const found = searchChildren(root, nodeId);
+                if (found) return found;
+            }
+            return null;
+        }
+        function searchChildren(node, nodeId) {
+            for (let child of node.children) {
+                if (child.id === nodeId) return child;
+                const found = searchChildren(child, nodeId);
+                if (found) return found;
+            }
+            return null;
+        }
+
+        function deleteNode(nodeId) {
+            if(!confirm("この参考書と、それ以降に繋がっているフローチャートを削除しますか？\n（取り消しできません）")) return;
+            const subject = appData.find(s => s.id === currentSubjectId);
+            
+            const rootIndex = subject.roots.findIndex(r => r.id === nodeId);
+            if (rootIndex !== -1) {
+                subject.roots.splice(rootIndex, 1);
+            } else {
+                removeNodeRecursive(subject.roots, nodeId);
+            }
+            saveData();
+            renderAll();
+        }
+
+        function removeNodeRecursive(nodes, idToRemove) {
+            for (let i = 0; i < nodes.length; i++) {
+                if (nodes[i].children) {
+                    const childIdx = nodes[i].children.findIndex(c => c.id === idToRemove);
+                    if (childIdx !== -1) {
+                        nodes[i].children.splice(childIdx, 1);
+                        return true;
+                    }
+                    if (removeNodeRecursive(nodes[i].children, idToRemove)) return true;
+                }
+            }
+            return false;
+        }
+
+        function toggleCompletedMenu(id) {
+            const menu = document.getElementById(`menu-${id}`);
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+        function toggleCompleted(id) {
+            const subject = appData.find(s => s.id === currentSubjectId);
+            const node = findNodeInSubject(subject, id);
+            if (node) {
+                node.completed = !node.completed;
+                saveData();
+                renderAll();
+            }
+        }
+        function toggleAddOptions(id) {
+            const options = document.getElementById(`options-${id}`);
+            options.style.display = options.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        // --- 描画系 ---
+
+        function renderTabs() {
+            const container = document.getElementById('tabs-container');
+            container.innerHTML = '';
+            appData.forEach(subject => {
+                const btn = document.createElement('button');
+                btn.className = `tab-btn ${subject.id === currentSubjectId ? 'active' : ''}`;
+                btn.innerText = subject.name;
+                btn.onclick = () => switchSubject(subject.id);
+                container.appendChild(btn);
+            });
+        }
+
+        function renderTree(node) {
+            let html = `<li>`;
+            html += `
+                <div class="node-content ${node.completed ? 'is-completed' : ''}">
+                    <div style="position: relative;">
+                        <img src="${node.imgSrc}" class="book-cover" onclick="toggleCompletedMenu('${node.id}')" alt="参考書" />
+                        <div class="completed-mark">済</div>
+                        
+                        <div class="action-menu" id="menu-${node.id}">
+                            <button class="btn" onclick="toggleCompleted('${node.id}')">
+                                ${node.completed ? '未完了に戻す' : '「済」にする'}
+                            </button>
+                            <button class="btn btn-danger" onclick="deleteNode('${node.id}')">削除</button>
+                            <button class="btn btn-close" onclick="toggleCompletedMenu('${node.id}')">閉じる</button>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <button class="btn btn-add" onclick="toggleAddOptions('${node.id}')">➕ 追加</button>
+                        <div class="add-options" id="options-${node.id}">
+                            <button class="btn btn-option" onclick="triggerFileInput('ADD_SINGLE', '${node.id}', false)">一本道</button>
+                            <button class="btn btn-option" onclick="triggerFileInput('ADD_BRANCH', '${node.id}', true)">分岐</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            if (node.children && node.children.length > 0) {
+                html += `<ul>`;
+                node.children.forEach(child => {
+                    html += renderTree(child);
+                });
+                html += `</ul>`;
+            }
+            html += `</li>`;
+            return html;
+        }
+
+        function renderMainContent() {
+            const container = document.getElementById('main-content');
+            if (!currentSubjectId) {
+                container.innerHTML = `<div class="empty-state">科目がありません。「科目追加」から追加してください。</div>`;
+                return;
+            }
+
+            const subject = appData.find(s => s.id === currentSubjectId);
+            
+            let html = `
+                <div class="subject-title-area">
+                    <h2>${subject.name} のフローチャート</h2>
+                    <div>
+                        <button class="btn init-btn" onclick="triggerFileInput('INIT_ROOT')">＋ 新しい開始地点を作成</button>
+                        <button class="btn btn-danger" style="width:auto; margin-left:10px; padding:8px;" onclick="deleteCurrentSubject()">この科目を削除</button>
+                    </div>
+                </div>
+            `;
+
+            if (subject.roots.length === 0) {
+                html += `<div class="empty-state">まだフローチャートがありません。右上の「新しい開始地点を作成」から1冊目を登録してください。</div>`;
+            } else {
+                // ★ここが変更点：ラッパーを追加して中央寄せとスクロールを両立★
+                html += `<div class="roots-wrapper"><div class="roots-container">`;
+                subject.roots.forEach(root => {
+                    html += `
+                        <div class="root-section">
+                            <div class="root-name">${root.rootName}</div>
+                            <div class="tree">
+                                <ul>${renderTree(root)}</ul>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div></div>`;
+            }
+
+            container.innerHTML = html;
+        }
+
+        function renderAll() {
+            renderTabs();
+            renderMainContent();
+        }
+
+        // アプリ起動
+        loadData();
+        renderAll();
+    </script>
+</body>
+</html>
